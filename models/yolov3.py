@@ -62,23 +62,19 @@ class YOLOv3(nn.Module):
             'sml': [(10, 13), (16, 30), (33, 23)],
         }
 
-        # 25~31
         self.dbl1 = DBLUnit(3, 32, 3, 1)
 
-        # 33~61
         self.res1 = nn.Sequential(
             DownSampleBlock(32, 64),
             ResBlock(64),
         )
 
-        # 63~91
         self.res2 = nn.Sequential(
             DownSampleBlock(64, 128),
             ResBlock(128),
             ResBlock(128),
         )
 
-        # 113~141
         self.res8_big = nn.Sequential(
             DownSampleBlock(128, 256),
             ResBlock(256),
@@ -91,7 +87,6 @@ class YOLOv3(nn.Module):
             ResBlock(256),
         )
 
-        # 286~312
         self.res8_mid = nn.Sequential(
             DownSampleBlock(256, 512),
             ResBlock(512),
@@ -104,17 +99,14 @@ class YOLOv3(nn.Module):
             ResBlock(512),
         )
 
-        # 461~487
         self.res4_sml = nn.Sequential(
             DownSampleBlock(512, 1024),
             ResBlock(1024),
             ResBlock(1024),
             ResBlock(1024),
             ResBlock(1024),
-
         )
 
-        # 551~590
         self.dbl5_sml = nn.Sequential(
             DBLUnit(1024, 512, 1, 1),
             DBLUnit(512, 1024, 3, 1),
@@ -123,19 +115,6 @@ class YOLOv3(nn.Module):
             DBLUnit(1024, 512, 1, 1),
         )
 
-        # 592~605
-        self.feat_sml = nn.Sequential(
-            DBLUnit(512, 1024, 3, 1),
-            nn.Conv2d(1024, 3 * (5 + self.n_class), 1, 1),
-        )
-
-        # 622~631
-        self.upsample_mid = nn.Sequential(
-            DBLUnit(512, 256, 1, 1),
-            UpsampleBlock()
-        )
-
-        # 638~676
         self.dbl5_mid = nn.Sequential(
             DBLUnit(512+256, 256, 1, 1),
             DBLUnit(256, 512, 3, 1),
@@ -144,19 +123,6 @@ class YOLOv3(nn.Module):
             DBLUnit(512, 256, 1, 1),
         )
 
-        # 678~691
-        self.feat_mid = nn.Sequential(
-            DBLUnit(256, 512, 3, 1),
-            nn.Conv2d(512, 3 * (5 + self.n_class), 1, 1),
-        )
-
-        # 709~718
-        self.upsample_big = nn.Sequential(
-            DBLUnit(256, 128, 1, 1),
-            UpsampleBlock()
-        )
-
-        # 725~763
         self.dbl5_big = nn.Sequential(
             DBLUnit(256+128, 128, 1, 1),
             DBLUnit(128, 256, 3, 1),
@@ -165,21 +131,42 @@ class YOLOv3(nn.Module):
             DBLUnit(256, 128, 1, 1),
         )
 
-        # 765~778
+        self.upsample_mid = nn.Sequential(
+            DBLUnit(512, 256, 1, 1),
+            UpsampleBlock()
+        )
+
+        self.upsample_big = nn.Sequential(
+            DBLUnit(256, 128, 1, 1),
+            UpsampleBlock()
+        )
+
+        self.feat_sml = nn.Sequential(
+            DBLUnit(512, 1024, 3, 1),
+            nn.Conv2d(1024, 3 * (5 + self.n_class), 1, 1),
+        )
+
+        self.feat_mid = nn.Sequential(
+            DBLUnit(256, 512, 3, 1),
+            nn.Conv2d(512, 3 * (5 + self.n_class), 1, 1),
+        )
+
         self.feat_big = nn.Sequential(
             DBLUnit(128, 256, 3, 1),
             nn.Conv2d(256, 3 * (5 + self.n_class), 1, 1),
         )
 
     def forward(self, x):
+        # common layers
         x = self.dbl1(x)
         x = self.res1(x)
         x = self.res2(x)
 
+        # features with three different scales
         x_big = self.res8_big(x)
         x_mid = self.res8_mid(x_big)
-
         x_sml = self.res4_sml(x_mid)
+
         x_sml = self.dbl5_sml(x_sml)
 
         x_mid = torch.concat([x_mid, self.upsample_mid(x_sml)], dim=1)
