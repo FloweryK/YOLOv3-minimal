@@ -30,28 +30,6 @@ class ResBlock(nn.Module):
         return x
 
 
-class DownSampleBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super().__init__()
-
-        self.layer = DBLUnit(in_channels, out_channels, 3, 2)
-    
-    def forward(self, x):
-        x = self.layer(x)
-        return x
-
-
-class UpsampleBlock(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-        self.layer = nn.UpsamplingNearest2d(scale_factor=2)
-    
-    def forward(self, x):
-        x = self.layer(x)
-        return x
-
-
 class YOLOv3(nn.Module):
     def __init__(self):
         super().__init__()
@@ -65,18 +43,18 @@ class YOLOv3(nn.Module):
         self.dbl1 = DBLUnit(3, 32, 3, 1)
 
         self.res1 = nn.Sequential(
-            DownSampleBlock(32, 64),
+            DBLUnit(32, 64, 3, 2), # Downsample
             ResBlock(64),
         )
 
         self.res2 = nn.Sequential(
-            DownSampleBlock(64, 128),
+            DBLUnit(64, 128, 3, 2), # Downsample
             ResBlock(128),
             ResBlock(128),
         )
 
         self.res8_big = nn.Sequential(
-            DownSampleBlock(128, 256),
+            DBLUnit(128, 256, 3, 2), # Downsample
             ResBlock(256),
             ResBlock(256),
             ResBlock(256),
@@ -88,7 +66,7 @@ class YOLOv3(nn.Module):
         )
 
         self.res8_mid = nn.Sequential(
-            DownSampleBlock(256, 512),
+            DBLUnit(256, 512, 3, 2), # Downsample
             ResBlock(512),
             ResBlock(512),
             ResBlock(512),
@@ -100,7 +78,7 @@ class YOLOv3(nn.Module):
         )
 
         self.res4_sml = nn.Sequential(
-            DownSampleBlock(512, 1024),
+            DBLUnit(512, 1024, 3, 2), # Downsample
             ResBlock(1024),
             ResBlock(1024),
             ResBlock(1024),
@@ -115,6 +93,11 @@ class YOLOv3(nn.Module):
             DBLUnit(1024, 512, 1, 1),
         )
 
+        self.upsample_mid = nn.Sequential(
+            DBLUnit(512, 256, 1, 1),
+            nn.UpsamplingNearest2d(scale_factor=2)
+        )
+
         self.dbl5_mid = nn.Sequential(
             DBLUnit(512+256, 256, 1, 1),
             DBLUnit(256, 512, 3, 1),
@@ -123,22 +106,17 @@ class YOLOv3(nn.Module):
             DBLUnit(512, 256, 1, 1),
         )
 
+        self.upsample_big = nn.Sequential(
+            DBLUnit(256, 128, 1, 1),
+            nn.UpsamplingNearest2d(scale_factor=2)
+        )
+
         self.dbl5_big = nn.Sequential(
             DBLUnit(256+128, 128, 1, 1),
             DBLUnit(128, 256, 3, 1),
             DBLUnit(256, 128, 1, 1),
             DBLUnit(128, 256, 3, 1),
             DBLUnit(256, 128, 1, 1),
-        )
-
-        self.upsample_mid = nn.Sequential(
-            DBLUnit(512, 256, 1, 1),
-            UpsampleBlock()
-        )
-
-        self.upsample_big = nn.Sequential(
-            DBLUnit(256, 128, 1, 1),
-            UpsampleBlock()
         )
 
         self.feat_sml = nn.Sequential(
@@ -212,7 +190,6 @@ def calculate_offset(x_map, img_shape, anchors):
 
 
 if __name__ == "__main__":
-    import torch
     x = torch.randn((10, 3, 416, 416))
 
     yolov3 = YOLOv3()
