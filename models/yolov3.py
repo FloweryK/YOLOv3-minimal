@@ -40,6 +40,7 @@ class YOLOv3(nn.Module):
             'sml': [(10, 13), (16, 30), (33, 23)],
         }
 
+        # layers
         self.dbl1 = DBLUnit(3, 32, 3, 1)
 
         self.res1 = nn.Sequential(
@@ -134,6 +135,10 @@ class YOLOv3(nn.Module):
             nn.Conv2d(256, 3 * (5 + self.n_class), 1, 1),
         )
 
+        # loss
+        self.mse_loss = nn.MSELoss()
+        self.bce_loss = nn.BCELoss()
+
     def forward(self, x):
         # common layers
         x = self.dbl1(x)
@@ -198,5 +203,5 @@ if __name__ == "__main__":
     print(x_sml.shape)
     print(x_mid.shape)
     print(x_big.shape)
-    print(x_sml[0, 0, 0, 0, :4])
+    print(x_sml[..., 0].shape)
 
